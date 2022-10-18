@@ -1,0 +1,180 @@
+esphome:
+  name: esphome-maybomnuoc
+  comment: eshphome-maybomnuoc 18.10.2022
+  project:
+    name: "pnduyy.esphome-maybomnuoc"
+    version: "1.0.0"
+  on_boot:
+    then:
+      - switch.turn_off: relay_maybom
+esp8266:
+  board: esp01_1m
+logger:
+api:
+ota:
+  password: "0987654321234567890"
+wifi:
+  ssid: "IOT"
+  password: "01102019"
+  #use upload code over wifi
+  manual_ip:
+    static_ip: 192.168.1.57
+    gateway: 192.168.1.1
+    subnet: 255.255.255.0
+  ap:
+    ssid: "Esphome-Maybomnuoc"
+    password: "09876543"
+captive_portal:
+web_server:
+  port: 80
+###====================main=================================================================##  
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: "IP Address - maybomnuoc"
+    ssid:
+      name: "Wifi Connected - maybomnuoc"
+#text để Hiển thị thời gian uptime
+#text_sensor:
+  - platform: template
+    name: "Uptime - maybomnuoc"
+    id: uptime_human
+    icon: mdi:clock-start
+#Hiển thị thời gian local
+  - platform: template
+    name: "Local Time - maybomnuoc"
+    id: time_local
+    update_interval: 60s
+    lambda: |-
+      auto time_text = id(maybomnuoc_time).now().strftime("%d/%m/%Y - %H:%M:%S");
+      return { time_text };
+switch:
+  - platform: gpio
+    pin: 2 #D4
+    inverted: true
+    name: "led onboard - maybomuoc"
+    id: ledonboard
+  - platform: gpio
+    pin: 4 #D2
+    #inverted: true
+    name: "Relay máy bơm - maybomnuoc"
+    id: relay_maybom
+  - platform: gpio
+    pin: 0 #D3
+    #inverted: true
+    name: "led night - maybomnuoc"
+    id: led
+binary_sensor:
+  - platform: gpio
+    pin:
+      number: 5 #D1
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    name: "bt_maybom - maybomnuoc"
+    id: bt_maybom
+    filters:
+      - delayed_on_off: 100ms
+    on_press:
+      then:
+        - switch.toggle: relay_maybom
+ 
+# cảm biến mực nước        
+  - platform: gpio
+    pin:
+      number: 14 #D5
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    name: "Bể nước - mức thấp - maybomnuoc"
+    id: low_benuoc
+  - platform: gpio
+    pin:
+      number: 13 #D7
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    name: "Bể nước - mức cao - maybomnuoc"
+    id: high_benuoc
+    on_press:
+      then:
+        - delay: 30s
+        - if:
+            condition:
+              and:
+                - switch.is_on: relay_maybom
+                - binary_sensor.is_on: high_benuoc
+                - binary_sensor.is_on: low_benuoc
+            then:
+              - switch.turn_off: relay_maybom
+interval:
+  - interval: 1s
+    then:
+        - if:
+            condition:
+              switch.is_on: relay_maybom
+            then:
+              - switch.turn_on: ledonboard
+            else:
+              - if:
+                  condition:
+                    and:
+                      - binary_sensor.is_off: low_benuoc
+                      - binary_sensor.is_off: high_benuoc
+                  then:
+                    - switch.toggle: ledonboard
+                  else:
+                    - if:
+                        condition:
+                          switch.is_on: ledonboard
+                        then:
+                          - switch.turn_off: ledonboard
+button:
+#Khai bái button restart esphome
+  - platform: restart
+    name: "Restart maybomnuoc"
+    
+time:
+  - platform: sntp
+    timezone: "Asia/Ho_Chi_Minh"
+    servers: 203.113.174.44
+    id: maybomnuoc_time
+    on_time:
+      - cron: '0 0 19 * * *'
+        then:
+          - switch.turn_on: led
+      - cron: '0 0 6 * * *'
+        then:
+          - switch.turn_off: led
+    
+sensor:
+  - platform: wifi_signal
+    name: "Wifi signal connected - maybomnuoc"
+
+#Tính toán thời gian uptime
+#sensor:
+  - platform: uptime
+    name: "Uptime sensor- maybomnuoc"
+    id: uptime_sensor
+    update_interval: 60s
+    on_raw_value:
+      then:
+        - text_sensor.template.publish:
+            id: uptime_human
+            state: !lambda |-
+              int seconds = round(id(uptime_sensor).raw_state);
+              int days = seconds / (24 * 3600);
+              seconds = seconds % (24 * 3600);
+              int hours = seconds / 3600;
+              seconds = seconds % 3600;
+              int minutes = seconds /  60;
+              seconds = seconds % 60;
+              return (
+                (days ? to_string(days) + "d " : "") +
+                (hours ? to_string(hours) + "h " : "") +
+                (minutes ? to_string(minutes) + "m " : "") +
+                (to_string(seconds) + "s")
+              ).c_str();  
