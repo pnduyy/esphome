@@ -1,0 +1,223 @@
+esphome:
+  name: esphome-rgb
+  comment: eshphome-rgb 18.10.2022
+  project:
+    name: "pnduyy.esphome-rgb"
+    version: "1.0.0"
+  on_boot:
+    then:
+      - light.control:
+          id: denbantho_rgb
+          state: on
+          brightness: 1
+          effect: "Chuyển màu ngẫu nhiên 1s"
+      - light.control:
+          id: dendau
+          state: on
+          brightness: 0.9
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+## Enable logging
+logger:
+## Enable Home Assistant API
+api:
+## Update code over wifi
+ota:
+  password: "0987654321234567890"
+
+wifi:
+  ssid: "IOT"
+  password: "01102019"
+  reboot_timeout: 0s
+  ## Optional static IP
+  manual_ip:
+    static_ip: 192.168.1.56
+    gateway: 192.168.1.1
+    subnet: 255.255.255.0
+  ## Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Esphome-Rgb"
+    password: "09876543"
+captive_portal:
+web_server:
+  local: true
+##============================main code================##
+light:
+  - platform: rgb
+    name: "Đèn bàn thờ - rgb"
+    id: denbantho_rgb
+    red: r_denbantho_rgb
+    green: g_denbantho_rgb
+    blue: b_denbantho_rgb
+    effects:
+      - random:
+          name: Chuyển màu ngẫu nhiên 1s
+      - random:
+          name: Chuyển màu ngẫu nhiên 30s
+          transition_length: 30s
+          update_interval: 30s
+      - pulse:
+          name: Sáng dần tắt dần 1s
+      - pulse:
+          name: Sáng dần tắt dần 5s
+          transition_length: 5s      
+          update_interval: 10s
+      - pulse:
+          name: Sáng dần tắt dần 0.5s
+          transition_length: 0.5s
+          update_interval: 0.5s
+      - strobe:
+          name: Sáng tắt liên tục 1s
+#nen dien 
+  - platform: binary
+    name: "Nến điện - rgb"
+    output: nendien_out
+    id: nendien
+#den ngu mono
+  - platform: monochromatic
+    name: "Đèn ngủ - rgb"
+    output: denngumono_out
+    id: denngumono
+#den ban tho mono
+  - platform: monochromatic
+    name: "Đèn bàn thờ mono - rgb"
+    output: denbanthomono_out
+    id: denbanthomono
+#den dau
+  - platform: monochromatic
+    name: "Đèn dầu - rgb"
+    output: dendau_out
+    id: dendau
+    
+output:
+#Khai báo 3 pin RGB đèn bàn thờ
+  - platform: ledc
+    id: r_denbantho_rgb
+    pin: GPIO23
+    max_power: 80%
+  - platform: ledc
+    id: g_denbantho_rgb
+    pin: GPIO22
+    max_power: 80%
+  - platform: ledc
+    id: b_denbantho_rgb
+    pin: GPIO21
+    max_power: 80%
+#nen dien
+  - platform: gpio
+    id: nendien_out
+    pin: GPIO19
+#den ngu mono - tuong thanh gia
+  - platform: ledc
+    pin: GPIO18
+    id: denngumono_out
+#den ban tho mono - 
+  - platform: ledc
+    pin: GPIO32
+    id: denbanthomono_out
+#den dau - 
+  - platform: ledc
+    pin: GPIO5
+    id: dendau_out
+    
+text_sensor:
+#text để Hiển thị thời gian uptime
+  - platform: template
+    name: "Uptime - rgb"
+    id: uptime_human
+    icon: mdi:clock-start
+#Hiển thị thời gian local
+  - platform: template
+    name: "Local Time - rgb"
+    id: time_local
+    update_interval: 60s
+    lambda: |-
+      auto time_text = id(rgb_time).now().strftime("%d-%m-%Y - %H:%M:%S");
+      return { time_text };
+ 
+sensor:
+#Tính toán thời gian uptime
+  - platform: uptime
+    name: "Uptime Sensor - rgb"
+    id: uptime_sensor
+    update_interval: 60s
+    on_raw_value:
+      then:
+        - text_sensor.template.publish:
+            id: uptime_human
+            state: !lambda |-
+              int seconds = round(id(uptime_sensor).raw_state);
+              int days = seconds / (24 * 3600);
+              seconds = seconds % (24 * 3600);
+              int hours = seconds / 3600;
+              seconds = seconds % 3600;
+              int minutes = seconds /  60;
+              seconds = seconds % 60;
+              return (
+                (days ? to_string(days) + "d " : "") +
+                (hours ? to_string(hours) + "h " : "") +
+                (minutes ? to_string(minutes) + "m " : "") +
+                (to_string(seconds) + "s")
+              ).c_str();
+#sensor:
+  - platform: dht
+    pin: GPIO15
+    temperature:
+      name: "Nhiệt độ - rgb"
+    humidity:
+      name: "Độ ẩm - rgb"
+    update_interval: 60s              
+            
+button:
+#Khai bái button restart esphome
+  - platform: restart
+    name: "Restart rgb"
+
+time:
+  - platform: sntp
+    timezone: UTC-07:00
+    id: rgb_time
+    on_time:
+      - cron: '0 0 4 * * *'
+        then: 
+          - light.turn_on: nendien
+          - light.turn_on: denbanthomono
+          - light.control:
+              id: denbantho_rgb
+              state: on
+              brightness: 1
+              effect: "Chuyển màu ngẫu nhiên 1s"
+      - cron: '0 0 6 * * *'
+        then: 
+          - light.turn_off: nendien
+          - light.turn_off: denbanthomono
+      - cron: '0 55 14 * * *'
+        then: 
+          - light.turn_on: nendien
+          - light.turn_on: denbanthomono
+          - delay: 35 min
+          - light.turn_off: nendien
+          - light.turn_off: denbanthomono
+      - cron: '0 5 18 * * *'
+        then: 
+          - light.turn_on: nendien
+          - light.turn_on: denbanthomono
+      - cron: '0 0 21 * * *'
+        then: 
+          - light.turn_off: nendien
+          - light.turn_off: denbanthomono
+          - light.control:
+              id: denbantho_rgb
+              state: on
+              red: 100%
+              green: 75%
+              blue: 0
+ 
+
+
+
+
+
