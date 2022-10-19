@@ -54,6 +54,12 @@ text_sensor:
       auto time_text = id(rgb_time).now().strftime("%d-%m-%Y - %H:%M:%S");
       return { time_text };
 
+  - platform: wifi_info
+    ip_address:
+      name: "rgb31-IP Address"
+    ssid:
+      name: "rgb30-Wifi Connected"
+
 button:
 #button Khai bái button restart esphome
   - platform: restart
@@ -169,7 +175,10 @@ sensor:
       name: "rgb4-Nhiệt độ"
     humidity:
       name: "rgb5-Độ ẩm"
-    update_interval: 60s              
+    update_interval: 60s   
+
+  - platform: wifi_signal
+    name: "rgb32-Wifi signal connected"           
             
 time:
   - platform: sntp
@@ -285,3 +294,4 @@ script:
                       return id(rgb_time).now().hour > 21 ;
                 then:
                   - script.execute: on_sleep
+
