@@ -3,18 +3,12 @@ esphome:
   comment: eshphome-rgb 18.10.2022
   project:
     name: "pnduyy.esphome-rgb"
-    version: "1.0.0"
+    version: "1.0.8"
   on_boot:
+    #priority: 850
     then:
-      - light.control:
-          id: denbantho_rgb
-          state: on
-          brightness: 1
-          effect: "Chuyển màu ngẫu nhiên 1s"
-      - light.control:
-          id: dendau
-          state: on
-          brightness: 0.9
+      - script.execute: on_start
+
 
 esp32:
   board: esp32dev
@@ -31,8 +25,7 @@ ota:
 wifi:
   ssid: "IOT"
   password: "01102019"
-  reboot_timeout: 0s
-  ## Optional static IP
+  reboot_timeout: 120min   #auto reboot after 120min if wifi disconnect
   manual_ip:
     static_ip: 192.168.1.56
     gateway: 192.168.1.1
@@ -43,11 +36,32 @@ wifi:
     password: "09876543"
 captive_portal:
 web_server:
-  local: true
+  port: 80
 ##============================main code================##
+
+text_sensor:
+#text_sensor Hiển thị thời gian uptime
+  - platform: template
+    name: "rgb1-Uptime"
+    id: uptime_human
+    icon: mdi:clock-start
+#text_sensor Hiển thị thời gian local
+  - platform: template
+    name: "rgb2-Local Time"
+    id: time_local
+    update_interval: 60s
+    lambda: |-
+      auto time_text = id(rgb_time).now().strftime("%d-%m-%Y - %H:%M:%S");
+      return { time_text };
+
+button:
+#button Khai bái button restart esphome
+  - platform: restart
+    name: "rgb3-Restart"
+
 light:
   - platform: rgb
-    name: "Đèn bàn thờ - rgb"
+    name: "rgb6-Đèn bàn thờ"
     id: denbantho_rgb
     red: r_denbantho_rgb
     green: g_denbantho_rgb
@@ -73,22 +87,22 @@ light:
           name: Sáng tắt liên tục 1s
 #nen dien 
   - platform: binary
-    name: "Nến điện - rgb"
+    name: "rgb8-Nến điện"
     output: nendien_out
     id: nendien
 #den ngu mono
   - platform: monochromatic
-    name: "Đèn ngủ - rgb"
+    name: "rgb91-Đèn ngủ"
     output: denngumono_out
     id: denngumono
 #den ban tho mono
   - platform: monochromatic
-    name: "Đèn bàn thờ mono - rgb"
+    name: "rgb9-Đèn bàn thờ mono"
     output: denbanthomono_out
     id: denbanthomono
 #den dau
   - platform: monochromatic
-    name: "Đèn dầu - rgb"
+    name: "rgb7-Đèn dầu"
     output: dendau_out
     id: dendau
     
@@ -123,25 +137,11 @@ output:
     pin: GPIO5
     id: dendau_out
     
-text_sensor:
-#text để Hiển thị thời gian uptime
-  - platform: template
-    name: "Uptime - rgb"
-    id: uptime_human
-    icon: mdi:clock-start
-#Hiển thị thời gian local
-  - platform: template
-    name: "Local Time - rgb"
-    id: time_local
-    update_interval: 60s
-    lambda: |-
-      auto time_text = id(rgb_time).now().strftime("%d-%m-%Y - %H:%M:%S");
-      return { time_text };
- 
+
 sensor:
 #Tính toán thời gian uptime
   - platform: uptime
-    name: "Uptime Sensor - rgb"
+    name: "rgb0-Uptime Sensor"
     id: uptime_sensor
     update_interval: 60s
     on_raw_value:
@@ -162,49 +162,36 @@ sensor:
                 (minutes ? to_string(minutes) + "m " : "") +
                 (to_string(seconds) + "s")
               ).c_str();
-#sensor:
+#sensor nhiet do do am DHT
   - platform: dht
     pin: GPIO15
     temperature:
-      name: "Nhiệt độ - rgb"
+      name: "rgb4-Nhiệt độ"
     humidity:
-      name: "Độ ẩm - rgb"
+      name: "rgb5-Độ ẩm"
     update_interval: 60s              
             
-button:
-#Khai bái button restart esphome
-  - platform: restart
-    name: "Restart rgb"
-
 time:
   - platform: sntp
-    timezone: UTC-07:00
+    timezone: "Asia/Ho_Chi_Minh"
+    servers: 203.113.174.44
     id: rgb_time
     on_time:
       - cron: '0 0 4 * * *'
         then: 
-          - light.turn_on: nendien
-          - light.turn_on: denbanthomono
-          - light.control:
-              id: denbantho_rgb
-              state: on
-              brightness: 1
-              effect: "Chuyển màu ngẫu nhiên 1s"
+          - script.execute: on_all
       - cron: '0 0 6 * * *'
         then: 
-          - light.turn_off: nendien
-          - light.turn_off: denbanthomono
+          - script.execute: on_normal
       - cron: '0 55 14 * * *'
         then: 
-          - light.turn_on: nendien
-          - light.turn_on: denbanthomono
-          - delay: 35 min
-          - light.turn_off: nendien
-          - light.turn_off: denbanthomono
-      - cron: '0 5 18 * * *'
+          - script.execute: on_all
+      - cron: '0 40 15 * * *'
         then: 
-          - light.turn_on: nendien
-          - light.turn_on: denbanthomono
+          - script.execute: on_normal
+      - cron: '0 30 18 * * *'
+        then: 
+          - script.execute: on_all
       - cron: '0 0 21 * * *'
         then: 
           - light.turn_off: nendien
@@ -212,12 +199,89 @@ time:
           - light.control:
               id: denbantho_rgb
               state: on
+              brightness: 0.5
               red: 100%
               green: 75%
               blue: 0
- 
 
 
+              
 
-
-
+##======script======
+script:
+  - id: off_all
+    then:
+      - light.turn_off: nendien
+      - light.turn_off: denbanthomono
+      - light.turn_off: dendau
+      - light.turn_off: denngumono
+      - light.turn_off: denbantho_rgb
+  - id: on_all
+    then:
+      - light.turn_on: nendien
+      - light.control:
+          id: denngumono
+          state: on
+          brightness: 1
+      - light.control:
+          id: denbanthomono
+          state: on
+          brightness: 0.9
+      - light.control:
+          id: dendau
+          state: on
+          brightness: 0.8
+      - light.control:
+          id: denbantho_rgb
+          state: on
+          brightness: 1
+          effect: "Chuyển màu ngẫu nhiên 1s"
+  - id: on_normal
+    then:
+      - script.execute: on_all
+      - light.turn_off: nendien
+      - light.turn_off: denbanthomono
+      - light.turn_off: denngumono
+  - id: on_sleep
+    then:
+      - light.turn_off: nendien
+      - light.turn_off: denbanthomono
+      - light.control:
+          id: denngumono
+          state: on
+          brightness: 1
+      - light.control:
+          id: dendau
+          state: on
+          brightness: 0.5
+      - light.control:
+          id: denbantho_rgb
+          state: on
+          brightness: 0.5
+          red: 100%
+          green: 75%
+          blue: 0
+  - id: on_start
+    then:
+      - repeat:
+          count: 3
+          then:
+            - script.execute: on_all
+            - delay: 2s
+            - script.execute: off_all
+            - delay: 2s
+      - script.execute: on_normal
+      - delay: 1min
+      - if:
+          condition:
+            - lambda: >-
+                return id(rgb_time).now().hour >= 18 && id(rgb_time).now().hour <= 21 ;
+          then:
+            - script.execute: on_all
+          else:
+            - if:
+                condition:
+                  - lambda: >-
+                      return id(rgb_time).now().hour > 21 ;
+                then:
+                  - script.execute: on_sleep
