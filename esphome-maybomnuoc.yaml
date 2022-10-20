@@ -56,6 +56,17 @@ switch:
     inverted: true
     name: "mbn22-led onboard"
     id: ledonboard
+    on_turn_off:
+      - switch.turn_off: ledonboard
+    on_turn_on:
+      - switch.turn_on: ledonboard
+      - if:
+          condition:
+            - switch.is_on: err_30p
+          then:
+            - delay: 30min
+            - switch.turn_off: relay_maybom
+
   - platform: gpio
     pin: 4 #D2
     #inverted: true
@@ -66,7 +77,16 @@ switch:
     #inverted: true
     name: "mbn24-led night"
     id: led
+  - platform: template
+    id: err_30p
+    name: "mbn-Tu dong tat sau 30p"
+    optimistic : true
+
+    
 binary_sensor:
+##binary_sensor
+##button: nhan 1 lan toggle maybom
+##button: nhan double se mo may bom va sau 30p se tu tat maybom 
   - platform: gpio
     pin:
       number: 5 #D1
@@ -81,6 +101,9 @@ binary_sensor:
     on_press:
       then:
         - switch.toggle: relay_maybom
+    on_double_click:
+      then:
+        - switch.toggle: err_30p
  
 # cảm biến mực nước        
   - platform: gpio
@@ -103,37 +126,58 @@ binary_sensor:
     id: high_benuoc
     on_press:
       then:
-        - delay: 30s
+        - delay: 3s
         - if:
             condition:
               and:
                 - switch.is_on: relay_maybom
                 - binary_sensor.is_on: high_benuoc
-                - binary_sensor.is_on: low_benuoc
+                #- binary_sensor.is_on: low_benuoc
             then:
               - switch.turn_off: relay_maybom
 interval:
-  - interval: 1s
+  - interval: 5s
     then:
         - if:
             condition:
-              switch.is_on: relay_maybom
+              and:
+                - switch.is_off: relay_maybom
+                - binary_sensor.is_off: low_benuoc
+                - binary_sensor.is_off: high_benuoc
             then:
               - switch.turn_on: ledonboard
-            else:
-              - if:
-                  condition:
-                    and:
-                      - binary_sensor.is_off: low_benuoc
-                      - binary_sensor.is_off: high_benuoc
-                  then:
-                    - switch.toggle: ledonboard
-                  else:
-                    - if:
-                        condition:
-                          switch.is_on: ledonboard
-                        then:
-                          - switch.turn_off: ledonboard
+              - delay: 1s
+              - switch.turn_off: ledonboard
+  - interval: 1s
+    then:
+      - if:
+          condition:
+            - switch.is_on: relay_maybom
+          then:
+            - if:
+                condition:
+                  - switch.is_on: err_30p
+                then:
+                  - switch.toggle: ledonboard
+                else:
+                  - if:
+                      condition:
+                        - switch.is_off: ledonboard
+                      then:
+                        - switch.turn_on: ledonboard
+          else:
+            - if:
+                condition:
+                  or:
+                    - binary_sensor.is_on: low_benuoc
+                    - binary_sensor.is_on: high_benuoc
+                then:
+                  - if:
+                      condition:
+                        - switch.is_on: ledonboard
+                      then:
+                        - switch.turn_off: ledonboard
+
 button:
 #Khai bái button restart esphome
   - platform: restart
