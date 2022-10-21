@@ -79,7 +79,7 @@ switch:
     id: led
   - platform: template
     id: err_30p
-    name: "mbn-Tu dong tat sau 30p"
+    name: "mbn-Tự động tắt máy bơm sau 30p"
     optimistic : true
 
     
@@ -101,9 +101,7 @@ binary_sensor:
     on_press:
       then:
         - switch.toggle: relay_maybom
-    on_double_click:
-      then:
-        - switch.toggle: err_30p
+
  
 # cảm biến mực nước        
   - platform: gpio
@@ -229,6 +227,7 @@ script:
   - id: on_start
     then:
       - switch.turn_off: relay_maybom
+      - switch.turn_on: err_30p
       - repeat:
           count: 3
           then:
