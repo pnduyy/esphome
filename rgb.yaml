@@ -1,0 +1,54 @@
+esphome:
+  name: rgb
+
+esp8266:
+  board: esp01_1m
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: "Z7R9s6brZN/dgqXXookpxMn4/qVtcvFsGi00e7/fbcM="
+
+ota:
+  password: "a8b83d44b5d2a994cbbf2eb2a5132b18"
+
+wifi:
+  ssid: "IOT"
+  password: "01102019"
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Rgb Fallback Hotspot"
+    password: "12345678"
+
+captive_portal:
+web_server:
+  port: 80 
+# Example configuration entry
+light:
+  - platform: rgb
+    name: "Đèn RGB"
+    red: output_red
+    green: output_green
+    blue: output_blue
+    effects:
+      - random:
+      - pulse:
+      - strobe:
+      - flicker:
+
+# Example output entry
+output:
+  - platform: esp8266_pwm
+    id: output_red
+    pin: GPIO14
+  - platform: esp8266_pwm
+    id: output_green
+    pin: GPIO12
+  - platform: esp8266_pwm
+    id: output_blue
+    pin: GPIO13
+  # Repeat for green and blue output
