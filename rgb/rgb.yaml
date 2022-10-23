@@ -1,0 +1,157 @@
+esphome:
+  name: rgb
+  comment: https://github.com/pnduyy/esphome
+  project:
+    name: "pnduyy.rgb"
+    version: "1.1.0"
+  on_boot:
+    - script.execute: on_start
+    
+esp8266:
+  board: esp01_1m
+
+logger:
+api:
+ota:
+  password: "0987654321234567890"
+wifi:
+  networks:
+    - ssid: "IOT"
+      password: "01102019"
+    - ssid: "Quoc Thinh"
+      password: "395455261"
+  reboot_timeout: 0s
+  ap:
+    ssid: "Rgb Hotspot"
+    password: "12345678"
+
+captive_portal:
+web_server:
+  port: 80 
+
+##====main code===============##
+light:
+  - platform: rgb
+    name: "rgb21-Đèn RGB"
+    id: denrgb
+    red: output_red
+    green: output_green
+    blue: output_blue
+    effects:
+      - random:
+      - pulse:
+      - strobe:
+      - flicker:
+
+output:
+  - platform: esp8266_pwm
+    id: output_red
+    pin: GPIO13
+    max_power: 90%
+  - platform: esp8266_pwm
+    id: output_green
+    pin: GPIO12
+    max_power: 90%
+  - platform: esp8266_pwm
+    id: output_blue
+    pin: GPIO14
+    max_power: 90%
+
+text_sensor:
+#text_sensor Hiển thị thời gian local
+  - platform: template
+    name: "rgb00-Local Time"
+    id: time_local
+    update_interval: 60s
+    lambda: |-
+      auto time_text = id(rgb_time).now().strftime("%d-%m-%Y - %H:%M:%S");
+      return { time_text };
+  - platform: wifi_info
+    ip_address:
+      name: "rgb03-IP Address"
+    ssid:
+      name: "rgb01-Wifi Connected"
+
+sensor:
+  - platform: wifi_signal
+    name: "rgb02-Wifi signal connected"   
+
+switch:
+  - platform: gpio
+    name: "rgb20-Led onboard"
+    pin: GPIO2
+    inverted: true
+    id: ledonboard
+
+button:
+  - platform: restart
+    name: "rgb10-Restart"
+  - platform: factory_reset
+    name: "rgb11-Reset to Factory"
+  - platform: template
+    name: "rgb22-Độ sáng đèn rgb: TĂNG"
+    on_press:
+      # Increases the brightness by 5%
+      - light.dim_relative:
+          id: denrgb
+          relative_brightness: 5%
+  - platform: template
+    name: "rgb23-Độ sáng đèn rgb: GIẢM "
+    on_press:
+      # Increases the brightness by 5%
+      - light.dim_relative:
+          id: denrgb
+          relative_brightness: -5%
+
+time:
+  - platform: sntp
+    timezone: "Asia/Ho_Chi_Minh"
+    servers: 203.113.174.44
+    id: rgb_time
+    on_time:
+      - cron: '0 0 21 * * *'
+        then: 
+          - script.execute: on_sleep
+      - cron: '0 0 6 * * *'
+        then: 
+          - script.execute: on_normal
+
+##======script======
+script:
+  - id: on_normal
+    then:
+      - light.control:
+          id: denrgb
+          state: on
+          brightness: 1
+          effect: "Random"
+  - id: on_sleep
+    then:
+      - light.control:
+          id: denrgb
+          state: on
+          brightness: 0.5
+          red: 100%
+          green: 75%
+          blue: 0
+          effect: "None"
+  - id: on_start
+    then:
+      - repeat:
+          count: 3
+          then:
+            - switch.turn_on: ledonboard
+            - delay: 1s
+            - switch.turn_off: ledonboard
+            - delay: 1s
+      - script.execute: on_normal
+      - switch.turn_on: ledonboard
+      - delay: 1min
+      - if:
+          condition:
+            - lambda: >-
+                return id(rgb_time).now().hour >= 21 ;
+          then:
+            - script.execute: on_sleep
+          else:
+            - script.execute: on_normal
