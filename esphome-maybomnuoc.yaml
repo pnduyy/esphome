@@ -1,9 +1,9 @@
 esphome:
   name: esphome-maybomnuoc
-  comment: eshphome-maybomnuoc 18.10.2022
+  comment: eshphome-maybomnuoc 31.10.2022
   project:
     name: "pnduyy.esphome-maybomnuoc"
-    version: "1.0.9"
+    version: "2.1.0"
   on_boot:
     then:
       - script.execute: on_start
@@ -15,8 +15,12 @@ api:
 ota:
   password: "0987654321234567890"
 wifi:
-  ssid: "IOT"
-  password: "01102019"
+  networks:
+    #wifi default to connect esphome
+  - ssid: "maybomnuoc"
+    password: "12345678"
+  - ssid: "IOT"
+    password: "01102019"
   reboot_timeout: 0s
   #use upload code over wifi
   manual_ip:
@@ -24,13 +28,24 @@ wifi:
     gateway: 192.168.1.1
     subnet: 255.255.255.0
   ap:
-    ssid: "Esphome-Maybomnuoc"
+    ssid: "ESP->maybomnuoc|12345678"
     password: "09876543"
 captive_portal:
 web_server:
   port: 80
+mdns:
+  disabled: false
 ###====================main=================================================================##  
 text_sensor:
+  - platform: template
+    name: "oo-About ESP maybomnuoc-oo"
+    lambda: |-
+      return {"Để bảo vệ máy bơm khi ESP lỗi hoặc quên tắt máy bơm, ESP sẽ tự động tắt máy bơm sau khi mở 60p"};
+  - platform: template
+    name: "oo-About ESP wifi-oo"
+    lambda: |-
+      return {"Nếu ESP không kết nối wifi, tạo wifi/pass là maybomnuoc/12345678 để ESP tự kết nối. IP: 192.168.1.0/24"};
+ #text_sensor: 
   - platform: wifi_info
     ip_address:
       name: "mbn11-IP Address"
@@ -60,12 +75,8 @@ switch:
       - switch.turn_off: ledonboard
     on_turn_on:
       - switch.turn_on: ledonboard
-      - if:
-          condition:
-            - switch.is_on: err_30p
-          then:
-            - delay: 30min
-            - switch.turn_off: relay_maybom
+      - delay: 60min
+      - switch.turn_off: relay_maybom
 
   - platform: gpio
     pin: 4 #D2
@@ -77,16 +88,10 @@ switch:
     #inverted: true
     name: "mbn24-led night"
     id: led
-  - platform: template
-    id: err_30p
-    name: "mbn-Tự động tắt máy bơm sau 30p"
-    optimistic : true
-
     
 binary_sensor:
 ##binary_sensor
 ##button: nhan 1 lan toggle maybom
-##button: nhan double se mo may bom va sau 30p se tu tat maybom 
   - platform: gpio
     pin:
       number: 5 #D1
@@ -154,32 +159,22 @@ interval:
           then:
             - if:
                 condition:
-                  - switch.is_on: err_30p
+                  - switch.is_off: ledonboard
                 then:
-                  - switch.toggle: ledonboard
-                else:
-                  - if:
-                      condition:
-                        - switch.is_off: ledonboard
-                      then:
-                        - switch.turn_on: ledonboard
+                  - switch.turn_on: ledonboard
           else:
             - if:
                 condition:
-                  or:
-                    - binary_sensor.is_on: low_benuoc
-                    - binary_sensor.is_on: high_benuoc
+                  - switch.is_on: ledonboard
                 then:
-                  - if:
-                      condition:
-                        - switch.is_on: ledonboard
-                      then:
-                        - switch.turn_off: ledonboard
+                   - switch.turn_off: ledonboard
 
 button:
 #Khai bái button restart esphome
   - platform: restart
     name: "mbn03-Restart"
+  - platform: factory_reset
+    name: "oo-Reset to Factory-oo"  
     
 time:
   - platform: sntp
@@ -227,7 +222,6 @@ script:
   - id: on_start
     then:
       - switch.turn_off: relay_maybom
-      - switch.turn_on: err_30p
       - repeat:
           count: 3
           then:
