@@ -1,9 +1,9 @@
 esphome:
   name: esphome-rgb
-  comment: eshphome-rgb 18.10.2022
+  comment: eshphome-rgb 31.10.2022
   project:
     name: "pnduyy.esphome-rgb"
-    version: "1.0.8"
+    version: "2.1.0"
   on_boot:
     #priority: 850
     then:
@@ -23,8 +23,11 @@ ota:
   password: "0987654321234567890"
 
 wifi:
-  ssid: "IOT"
-  password: "01102019"
+  networks:
+  - ssid: "rgb"
+    password: "12345678"
+  - ssid: "IOT"
+    password: "01102019"
   reboot_timeout: 120min   #auto reboot after 120min if wifi disconnect
   manual_ip:
     static_ip: 192.168.1.56
@@ -32,14 +35,19 @@ wifi:
     subnet: 255.255.255.0
   ## Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:
-    ssid: "Esphome-Rgb"
+    ssid: "ESP->rgb|12345678"
     password: "09876543"
+    channel: 6
 captive_portal:
 web_server:
   port: 80
 ##============================main code================##
 
 text_sensor:
+  - platform: template
+    name: "oo-About ESP wifi-oo"
+    lambda: |-
+      return {"Nếu ESP không kết nối wifi, tạo wifi/pass là rgb/12345678 để ESP tự kết nối. IP: 192.168.1.0/24"};
 #text_sensor Hiển thị thời gian uptime
   - platform: template
     name: "rgb1-Uptime"
@@ -64,6 +72,8 @@ button:
 #button Khai bái button restart esphome
   - platform: restart
     name: "rgb3-Restart"
+  - platform: factory_reset
+    name: "oo-Reset to Factory-oo"   
 
 light:
   - platform: rgb
@@ -203,18 +213,7 @@ time:
           - script.execute: on_all
       - cron: '0 0 21 * * *'
         then: 
-          - light.turn_off: nendien
-          - light.turn_off: denbanthomono
-          - light.control:
-              id: denbantho_rgb
-              state: on
-              brightness: 0.5
-              red: 100%
-              green: 75%
-              blue: 0
-
-
-              
+          - script.execute: on_sleep
 
 ##======script======
 script:
@@ -294,5 +293,4 @@ script:
                       return id(rgb_time).now().hour > 21 ;
                 then:
                   - script.execute: on_sleep
-
 
