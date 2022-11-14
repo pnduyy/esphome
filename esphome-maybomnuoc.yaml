@@ -12,6 +12,7 @@ esp8266:
   board: esp01_1m
 logger:
 api:
+  reboot_timeout: 0s  #disable auto reboot when api not connect.
 ota:
   password: "0987654321234567890"
 wifi:
@@ -21,15 +22,19 @@ wifi:
     password: "12345678"
   - ssid: "IOT"
     password: "01102019"
-  reboot_timeout: 0s
+
+  reboot_timeout: 60min  #time to esp auto reboot when disconnect wifi
   #use upload code over wifi
   manual_ip:
     static_ip: 192.168.1.57
     gateway: 192.168.1.1
     subnet: 255.255.255.0
+    dns1: 192.168.1.1
+    dns2: 8.8.8.8
   ap:
     ssid: "ESP->maybomnuoc|12345678"
     password: "09876543"
+    channel: 6
 captive_portal:
 web_server:
   port: 80
@@ -44,7 +49,7 @@ text_sensor:
   - platform: template
     name: "oo-About ESP wifi-oo"
     lambda: |-
-      return {"Nếu ESP không kết nối wifi, tạo wifi/pass là maybomnuoc/12345678 để ESP tự kết nối. IP: 192.168.1.0/24"};
+      return {"Nếu ESP không kết nối wifi, tạo wifi/pass là maybomnuoc/12345678 để ESP tự kết nối. IP: 192.168.1.57/24"};
  #text_sensor: 
   - platform: wifi_info
     ip_address:
@@ -67,22 +72,23 @@ text_sensor:
       return { time_text };
 switch:
   - platform: gpio
-    pin: 2 #D4
-    inverted: true
-    name: "mbn22-led onboard"
-    id: ledonboard
+    pin: 4 #D2
+    #inverted: true
+    name: "mbn23-Relay máy bơm"
+    id: relay_maybom
     on_turn_off:
       - switch.turn_off: ledonboard
     on_turn_on:
       - switch.turn_on: ledonboard
       - delay: 60min
       - switch.turn_off: relay_maybom
-
+  
   - platform: gpio
-    pin: 4 #D2
-    #inverted: true
-    name: "mbn23-Relay máy bơm"
-    id: relay_maybom
+    pin: 2 #D4
+    inverted: true
+    name: "mbn22-led onboard"
+    id: ledonboard
+
   - platform: gpio
     pin: 0 #D3
     #inverted: true
@@ -107,8 +113,8 @@ binary_sensor:
       then:
         - switch.toggle: relay_maybom
 
- 
-# cảm biến mực nước        
+# cảm biến mực nước      
+##binary_sensor  
   - platform: gpio
     pin:
       number: 14 #D5
@@ -118,6 +124,9 @@ binary_sensor:
         pullup: true
     name: "mbn20-Bể nước - mức thấp"
     id: low_benuoc
+    filters:
+      - delayed_on_off: 100ms
+##binary_sensor
   - platform: gpio
     pin:
       number: 13 #D7
@@ -127,6 +136,8 @@ binary_sensor:
         pullup: true
     name: "mbn21-Bể nước - mức cao"
     id: high_benuoc
+    filters:
+      - delayed_on_off: 100ms
     on_press:
       then:
         - delay: 3s
@@ -151,23 +162,23 @@ interval:
               - switch.turn_on: ledonboard
               - delay: 1s
               - switch.turn_off: ledonboard
-  - interval: 1s
-    then:
-      - if:
-          condition:
-            - switch.is_on: relay_maybom
-          then:
-            - if:
-                condition:
-                  - switch.is_off: ledonboard
-                then:
-                  - switch.turn_on: ledonboard
-          else:
-            - if:
-                condition:
-                  - switch.is_on: ledonboard
-                then:
-                   - switch.turn_off: ledonboard
+#  - interval: 1s
+#    then:
+#      - if:
+#          condition:
+#            - switch.is_on: relay_maybom
+#          then:
+#            - if:
+#                condition:
+#                  - switch.is_off: ledonboard
+#                then:
+#                  - switch.turn_on: ledonboard
+#          else:
+#            - if:
+#                condition:
+#                  - switch.is_on: ledonboard
+#                then:
+#                   - switch.turn_off: ledonboard
 
 button:
 #Khai bái button restart esphome
