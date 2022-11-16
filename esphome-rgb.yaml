@@ -1,14 +1,14 @@
+
 esphome:
   name: esphome-rgb
-  comment: eshphome-rgb 31.10.2022
+  comment: eshphome-rgb 16.11.2022
   project:
     name: "pnduyy.esphome-rgb"
-    version: "2.1.0"
+    version: "2.2.0"
   on_boot:
     #priority: 850
     then:
       - script.execute: on_start
-
 
 esp32:
   board: esp32dev
@@ -16,8 +16,10 @@ esp32:
     type: arduino
 ## Enable logging
 logger:
+ # level: VERY_VERBOSE
 ## Enable Home Assistant API
 api:
+  reboot_timeout: 0s
 ## Update code over wifi
 ota:
   password: "0987654321234567890"
@@ -28,11 +30,13 @@ wifi:
     password: "12345678"
   - ssid: "IOT"
     password: "01102019"
-  reboot_timeout: 120min   #auto reboot after 120min if wifi disconnect
+  reboot_timeout: 60min   #auto reboot after 120min if wifi disconnect
   manual_ip:
     static_ip: 192.168.1.56
     gateway: 192.168.1.1
     subnet: 255.255.255.0
+    dns1: 192.168.1.1
+    dns2: 8.8.8.8
   ## Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:
     ssid: "ESP->rgb|12345678"
@@ -41,13 +45,15 @@ wifi:
 captive_portal:
 web_server:
   port: 80
-##============================main code================##
+mdns:
+  disabled: false
 
+##============================main code================##
 text_sensor:
   - platform: template
-    name: "oo-About ESP wifi-oo"
+    name: "xx-About ESP wifi-xx"
     lambda: |-
-      return {"Nếu ESP không kết nối wifi, tạo wifi/pass là rgb/12345678 để ESP tự kết nối. IP: 192.168.1.0/24"};
+      return {"Nếu ESP không kết nối wifi, tạo wifi/pass là rgb/12345678 để ESP tự kết nối. IP: 192.168.1.56"};
 #text_sensor Hiển thị thời gian uptime
   - platform: template
     name: "rgb1-Uptime"
@@ -73,7 +79,7 @@ button:
   - platform: restart
     name: "rgb3-Restart"
   - platform: factory_reset
-    name: "oo-Reset to Factory-oo"   
+    name: "xx-Reset to Factory-xx"   
 
 light:
   - platform: rgb
@@ -195,32 +201,32 @@ time:
     timezone: "Asia/Ho_Chi_Minh"
     servers: 203.113.174.44
     id: rgb_time
-    on_time:
-      - cron: '0 0 4 * * *'
-        then: 
-          - script.execute: on_all
-      - cron: '0 0 6 * * *'
-        then: 
-          - script.execute: on_normal
-      - cron: '0 55 14 * * *'
-        then: 
-          - script.execute: on_all
-      - cron: '0 40 15 * * *'
-        then: 
-          - script.execute: on_normal
-      - cron: '0 30 18 * * *'
-        then: 
-          - script.execute: on_all
-      - cron: '0 0 21 * * *'
-        then: 
-          - script.execute: on_sleep
+#    on_time:
+#      - cron: '0 0 4 * * *'
+#        then: 
+#          - script.execute: on_all
+#      - cron: '0 0 6 * * *'
+ #       then: 
+#          - script.execute: on_normal
+#      - cron: '0 55 14 * * *'
+#        then: 
+#          - script.execute: on_all
+#      - cron: '0 40 15 * * *'
+#        then: 
+#          - script.execute: on_normal
+#      - cron: '0 30 18 * * *'
+#        then: 
+#          - script.execute: on_all
+#      - cron: '0 0 21 * * *'
+#        then: 
+#          - script.execute: on_sleep 
 
 ##======script======
 script:
   - id: off_all
     then:
       - light.turn_off: nendien
-      - light.turn_off: denbanthomono
+      - light.turn_off: denbanthomono 
       - light.turn_off: dendau
       - light.turn_off: denngumono
       - light.turn_off: denbantho_rgb
@@ -280,17 +286,39 @@ script:
             - delay: 2s
       - script.execute: on_normal
       - delay: 1min
-      - if:
-          condition:
-            - lambda: >-
-                return id(rgb_time).now().hour >= 18 && id(rgb_time).now().hour <= 21 ;
-          then:
-            - script.execute: on_all
-          else:
-            - if:
-                condition:
-                  - lambda: >-
-                      return id(rgb_time).now().hour > 21 ;
-                then:
-                  - script.execute: on_sleep
+ #     - if:
+ #         condition:
+ #           - lambda: >-
+ #               return id(rgb_time).now().hour >= 18 && id(rgb_time).now().hour <= 21 ;
+ #         then:
+ #           - script.execute: on_all
+ #         else:
+ #           - if:
+ #               condition:
+ #                 - lambda: >-
+ #                     return id(rgb_time).now().hour > 21 ;
+ #               then:
+ #                 - script.execute: on_sleep
 
+select:
+  - platform: template
+    name: "rgb92-Mode select"
+    id: modeselect
+    optimistic: true
+    options:
+      - "Tắt đèn all"
+      - "Mở đèn all"
+      - "Normal"
+      - "Sleep"
+    initial_option: "Normal"
+    on_value:
+      then:
+        - lambda: >-
+            if (id(modeselect).state == "Tắt đèn all") {
+                id(off_all).execute();}
+            else if (id(modeselect).state == "Mở đèn all") {
+                     id(on_all).execute();}
+                  else if (id(modeselect).state == "Normal") {
+                           id(on_normal).execute();}
+                        else if (id(modeselect).state == "Sleep") {
+                                 id(on_sleep).execute();}
