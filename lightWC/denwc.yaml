@@ -1,0 +1,231 @@
+esphome:
+  name: esphome-denwc
+  comment: 08022023
+  project:
+    name: "pnduyy.esphome-denwc"
+    version: "1.0.0"
+    #D1 D2 output dieu khien relay on/off den wc
+    #D3 D5 input 2 nut nhan dk 2 relay
+    #D6 D7 input 2 cam bien pir
+  on_boot:
+    then:
+      - switch.turn_off: relay1
+      - switch.turn_off: relay2
+      - binary_sensor.template.publish:
+            id: bt1_x
+            state: OFF
+      - binary_sensor.template.publish:
+            id: bt2_x
+            state: OFF
+
+esp8266:
+  board: esp01_1m
+logger:
+api:
+  reboot_timeout: 0s  #disable auto reboot when api not connect.
+ota:
+  password: "0987654321234567890"
+wifi:
+  networks:
+    #wifi default to connect esphome
+  - ssid: "denwc"
+    password: "12345678"
+  - ssid: "IOT"
+    password: "01102019"
+  reboot_timeout: 0s  
+  #use upload code over wifi
+  #manual_ip:
+  #  static_ip: 192.168.1.57
+  #  gateway: 192.168.1.1
+  #  subnet: 255.255.255.0
+  #  dns1: 192.168.1.1
+  #  dns2: 8.8.8.8
+  ap:
+    ssid: "ESP->denwc|12345678"
+    password: "09876543"
+    channel: 6
+captive_portal:
+web_server:
+  port: 80
+mdns:
+  disabled: false
+#----------main code----------------
+######################################
+#Cau hinh 2 relay dk den
+switch:
+  - platform: gpio
+    pin: 5 #D1
+    inverted: true
+    name: "wc-Relay đèn 1"
+    id: relay1
+    on_turn_on:
+      then:
+        - delay: 4min
+        - if:
+            condition:
+              - binary_sensor.is_off: pir1
+            then:
+              - switch.turn_off: relay1
+              - binary_sensor.template.publish:
+                  id: bt1_x
+                  state: OFF
+    on_turn_off:
+      then:
+        - delay: 30s
+        - if:
+            condition:
+              - binary_sensor.is_off: pir1
+            then:
+              - binary_sensor.template.publish:
+                  id: bt1_x
+                  state: OFF
+
+  - platform: gpio
+    pin: 4 #D2
+    inverted: true
+    name: "wc-Relay đèn 2"
+    id: relay2
+    on_turn_on:
+      then:
+        - delay: 4min
+        - if:
+            condition:
+              - binary_sensor.is_off: pir2
+            then:
+              - switch.turn_off: relay2
+              - binary_sensor.template.publish:
+                  id: bt2_x
+                  state: OFF
+    on_turn_off:
+      then:
+        - delay: 30s
+        - if:
+            condition:
+              - binary_sensor.is_off: pir2
+            then:
+              - binary_sensor.template.publish:
+                  id: bt2_x
+                  state: OFF
+#cau hinh ledonboard
+status_led:
+  pin: 
+    number: 2 #D4
+    inverted: true
+  #name: "wc-Led onboard"
+  id: ledonboard
+#cau hinh 2 nut nhan
+binary_sensor:
+  - platform: gpio
+    pin:
+      number: 0 #D3
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    name: "wc-bt1"
+    id: bt1
+    filters:
+      - delayed_on_off: 50ms
+    on_state:
+      then:
+        - switch.toggle: relay1
+        - if:
+            condition:
+              - switch.is_on: relay1
+            then:
+              - binary_sensor.template.publish:
+                  id: bt1_x
+                  state: ON
+            else:
+              - binary_sensor.template.publish:
+                  id: bt1_x
+                  state: OFF
+
+  - platform: gpio
+    pin:
+      number: 14 #D5
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    name: "wc-bt2"
+    id: bt2
+    filters:
+      - delayed_on_off: 50ms
+    on_state:
+      then:
+        - switch.toggle: relay2
+        - if:
+            condition:
+              - switch.is_on: relay2
+            then:
+              - binary_sensor.template.publish:
+                  id: bt2_x
+                  state: ON
+            else:
+              - binary_sensor.template.publish:
+                  id: bt2_x
+                  state: OFF
+#Cau hinh 2 cam bien PIR
+#binary_sensor:
+  - platform: gpio
+    pin: 12 #D6
+    filters:
+      - delayed_on: 50ms
+      - delayed_off: 5min
+    name: "wc-PIR1"
+    id: pir1
+    on_release:  #state ON to OFF
+      then:
+        - if:
+            condition:
+              - switch.is_on: relay1
+            then:
+              - switch.turn_off: relay1
+    on_press:  #state OFF to ON
+      then:
+        - if:
+            condition:
+              and:
+                - binary_sensor.is_on: bt1_x
+                - switch.is_off: relay1
+            then:
+              - switch.turn_on: relay1
+
+  - platform: gpio
+    pin: 13 #D7
+    filters:
+      - delayed_on: 50ms
+      - delayed_off: 5min
+    name: "wc-PIR2"
+    id: pir2
+    on_release:  #state ON to OFF
+      then:
+        - if:
+            condition:
+              - switch.is_on: relay2
+            then:
+              - switch.turn_off: relay2
+    on_press:  #state OFF to ON
+      then:
+        - if:
+            condition:
+              and:
+                - binary_sensor.is_on: bt2_x
+                - switch.is_off: relay2
+            then:
+              - switch.turn_on: relay2
+#Cau hinh 2 bien nhan biet bt duoc nhan
+#binary_sensor:
+  - platform: template
+    name: "wc-bt1 x"
+    id: bt1_x
+  - platform: template
+    name: "wc-bt2 x"
+    id: bt2_x
+#Khai bái button restart esphome
+button:
+  - platform: restart
+    name: "wc-Restart"
+  - platform: factory_reset
+    name: "wc-Reset to Factory"  
