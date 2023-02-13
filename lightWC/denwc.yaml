@@ -4,8 +4,8 @@ esphome:
   project:
     name: "pnduyy.esphome-denwc"
     version: "1.0.0"
-    #D1 D2 output dieu khien relay on/off den wc
-    #D3 D5 input 2 nut nhan dk 2 relay
+    #D1 D3 output dieu khien relay on/off den wc
+    #D2 D5 input 2 nut nhan dk 2 relay
     #D6 D7 input 2 cam bien pir
   on_boot:
     then:
@@ -81,7 +81,7 @@ switch:
                   state: OFF
 
   - platform: gpio
-    pin: 4 #D2
+    pin: 0 #D3
     inverted: true
     name: "wc-Relay đèn 2"
     id: relay2
@@ -117,7 +117,7 @@ status_led:
 binary_sensor:
   - platform: gpio
     pin:
-      number: 0 #D3
+      number: 4 #D2
       inverted: true
       mode:
         input: true
